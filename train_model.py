@@ -13,23 +13,22 @@ import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
 import logging
 
+
+# training info
 class TrainingLoggerCallback(BaseCallback):
-    """Custom callback for logging training progress"""
+    """Custom callback for logging training progress at each step."""
     
-    def __init__(self, check_freq: int = 1000, verbose: int = 0):
+    def __init__(self, check_freq: int = 1, verbose: int = 0):
         super().__init__(verbose)
-        self.check_freq = check_freq
+        self.check_freq = check_freq  # Log every `check_freq` steps
         self.logger = logging.getLogger(__name__)
 
     def _on_step(self) -> bool:
         if self.n_calls % self.check_freq == 0:
             # Access training metrics
             training_info = {
-                "timesteps": self.model.num_timesteps,
-                "mean_reward": np.mean(self.model.ep_info_buffer),
-                "max_reward": np.max(self.model.ep_info_buffer),
-                "episode_length": np.mean(self.model.ep_length_buffer),
-                "exploration_rate": self.model.exploration_rate
+                "timesteps": self.model.num_timesteps
+                # "exploration_rate": self.model.exploration_rate
             }
             
             # Access environment-specific metrics
@@ -37,28 +36,29 @@ class TrainingLoggerCallback(BaseCallback):
                 env = self.model.env.envs[0]
                 if hasattr(env, 'eph'):
                     training_info.update({
-                        "current_distance": env.eph.current_reward,
+                        "current_reward": env.eph.current_reward,
+                        "cumulative_reward": env.eph.cum_reward_episode,
                         "avg_muscle_activation": np.mean(env.muscle_activations)
                     })
 
             # Format and log the training information
-            log_message = " | ".join(
-                [f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}"
+            log_message = " \n ".join(
+                [f"{k}: {v:.4f}" if isinstance(v, (float, int)) else f"{k}: {v}"
                  for k, v in training_info.items()]
             )
-            self.logger.info(f"Training Progress: {log_message}")
+            self.logger.info(f"Step Progress: {log_message}")
 
             # Log gradient norms
-            gradient_norms = {}
-            for name, param in self.model.policy.named_parameters():
-                if param.grad is not None:
-                    gradient_norms[f"grad_{name}"] = param.grad.norm().item()
+            # gradient_norms = {}
+            # for name, param in self.model.policy.named_parameters():
+            #     if param.grad is not None:
+            #         gradient_norms[f"grad_{name}"] = param.grad.norm().item()
             
-            if gradient_norms:  # Only log if gradients are available
-                grad_message = " | ".join(
-                    [f"{k}: {v:.6f}" for k, v in gradient_norms.items()]
-                )
-                self.logger.info(f"Gradient Norms: {grad_message}")
+            # if gradient_norms:  # Only log if gradients are available
+            #     grad_message = " | ".join(
+            #         [f"{k}: {v:.6f}" for k, v in gradient_norms.items()]
+            #     )
+            #     self.logger.info(f"Gradient Norms: {grad_message}")
             
         return True
     
@@ -86,15 +86,15 @@ def train_model(args):
             gamma=args.gamma,
             tau=args.tau,
             device=device,
-            tensorboard_log=args.log_dir if args.log_dir else None
+            # tensorboard_log=args.log_dir if args.log_dir else None
         )
 
     logger.info("Training started...")
 
     model.learn(
         total_timesteps=args.total_timesteps,
-        tb_log_name=args.experiment_name,
-        log_interval=4,
+        # tb_log_name=args.experiment_name,
+        # log_interval=4,
         callback=TrainingLoggerCallback(check_freq=1000)
     )
 
@@ -143,13 +143,13 @@ if __name__ == "__main__":
     parser.add_argument("--save-path", type=str, default="models/sac_arm", help="Path to save the trained model.")
     parser.add_argument("--load-model", action="store_true", help="Load an existing model before training.")
 
-    parser.add_argument("--log-dir", type=str, default="logs/", help="Directory for TensorBoard logs.")
+    # parser.add_argument("--log-dir", type=str, default="logs/", help="Directory for TensorBoard logs.")
     parser.add_argument("--experiment-name", type=str, default="sac_arm", help="Name for TensorBoard experiment.")
     parser.add_argument("--render", action="store_true", help="Render environment during training.")
 
     args = parser.parse_args()
     
-    if args.log_dir and not os.path.exists(args.log_dir):
-        os.makedirs(args.log_dir, exist_ok=True)
+    # if args.log_dir and not os.path.exists(args.log_dir):
+    #     os.makedirs(args.log_dir, exist_ok=True)
     
     train_model(args)

@@ -264,8 +264,7 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
             self.render()
 
         return np.array(self.state, dtype=np.float32), {}
-
-
+    
     def render(self):
         if self.render_mode is None:
             assert self.spec is not None
@@ -281,36 +280,34 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
     def close(self):
         if self.render_mode == 'human':
             self.armrenderer.close()
-
-
 def main():
     # Initialize the environment
     env = ArmReachingEnv2DTheta(render_mode="human")
-    # env = ArmReachingEnv2DTheta(render_mode=None)
-    check_env(env)
-    state, _ = env.reset()
-    model = SAC(
-        "MlpPolicy",
-        env,
-        verbose=1,
-        learning_rate=3e-4,
-        buffer_size=1_000_000,
-        ent_coef='auto',  # Let SAC tune entropy automatically
-        gamma=0.99,
-        tau=0.05,        # Soft update coefficient
-    )
+    # # env = ArmReachingEnv2DTheta(render_mode=None)
+    # check_env(env)
+    # state, _ = env.reset()
+    # model = SAC(
+    #     "MlpPolicy",
+    #     env,
+    #     verbose=1,
+    #     learning_rate=3e-4,
+    #     buffer_size=1_000_000,
+    #     ent_coef='auto',  # Let SAC tune entropy automatically
+    #     gamma=0.99,
+    #     tau=0.05,        # Soft update coefficient
+    # )
 
-    model.learn(total_timesteps=1_000_000)
-    state, _ = env.reset()
+    # model.learn(total_timesteps=1_000_000)
+    # state, _ = env.reset()
 
-    for step in range(MAX_EPISODE_STEPS):
-        action, _ = model.predict(state, deterministic=True)
-        state, reward, terminated, truncated, info = env.step(action)
-        print(f"Step: {step}, State: {state}, Reward: {reward}")
+    # for step in range(MAX_EPISODE_STEPS):
+    #     action, _ = model.action_space.sample()
+    #     state, reward, terminated, truncated, info = env.step(action)
+    #     print(f"Step: {step}, State: {state}, Reward: {reward}")
 
-        if terminated or truncated:
-            print("Episode finished!")
-            break
+    #     if terminated or truncated:
+    #         print("Episode finished!")
+    #         break
 
     env.close()
 if __name__ == "__main__":
