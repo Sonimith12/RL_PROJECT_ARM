@@ -36,7 +36,7 @@ class TrainingLoggerCallback(BaseCallback):
                 env = self.model.env.envs[0]
                 if hasattr(env, 'eph'):
                     training_info.update({
-                        "current_reward": env.eph.current_reward,
+                        "mean current_reward": np.mean(env.eph.current_reward),
                         "cumulative_reward": env.eph.cum_reward_episode,
                         "avg_muscle_activation": np.mean(env.muscle_activations)
                     })
@@ -46,7 +46,7 @@ class TrainingLoggerCallback(BaseCallback):
                 [f"{k}: {v:.4f}" if isinstance(v, (float, int)) else f"{k}: {v}"
                  for k, v in training_info.items()]
             )
-            self.logger.info(f"Step Progress: {log_message}")
+            self.logger.info(f"========= Step Progress: {log_message} ==========")
 
             # Log gradient norms
             # gradient_norms = {}
