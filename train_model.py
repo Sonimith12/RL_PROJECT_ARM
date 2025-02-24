@@ -63,11 +63,12 @@ if __name__ == "__main__":
                         help='Soft update coefficient for target networks')
     parser.add_argument('--total-timesteps', type=int, default=1_000_000,
                         help='Total number of timesteps to train')
-    
-    parser.add_argument('--use-gpu', action='store_true',
-                        help='Use GPU if available')
-    parser.add_argument('--render', action='store_true',
-                        help='Render environment during training')
+    parser.add_argument('--use-gpu', type=lambda x: x.lower() in ['true', '1', 'yes'],
+                    default=False, help='Use GPU (true/false)')
+    parser.add_argument('--render', type=lambda x: x.lower() in ['true', '1', 'yes'],
+                    default=False, help='Enable rendering (true/false)')
+
+
 
     args = parser.parse_args()
     
