@@ -92,7 +92,7 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         self.eph.nb_step_done += 1
         self.eph.past_theta_1_values.append(self.theta_1_c)
-        self.eph.past_theta_2_values.append(self.theta_2_c) 
+        self.eph.past_theta_2_values.append(self.theta_2_c)
 
         # Update muscle activations
         self.muscle_activations = np.clip(action, 0, 1)
@@ -124,45 +124,63 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.theta_1_c = np.minimum(np.maximum(self.theta_1_c, 0), 180)
         self.theta_2_c = np.minimum(np.maximum(self.theta_2_c, 0), 150)
 
+        # Calculate end effector position
         theta_1_rad = np.radians(self.theta_1_c)
         theta_2_rad = np.radians(self.theta_2_c)
-        x_end = self.armconfig.SIZE_HUMERUS * np.cos(theta_1_rad) + \
-            self.armconfig.SIZE_RADIUS * np.cos(theta_2_rad)
+        x_end = (
+            self.armconfig.SIZE_HUMERUS * np.cos(theta_1_rad) +
+            self.armconfig.SIZE_RADIUS * np.cos(theta_1_rad + theta_2_rad)
+        )
+        y_end = (
+            self.armconfig.SIZE_HUMERUS * np.sin(theta_1_rad) +
+            self.armconfig.SIZE_RADIUS * np.sin(theta_1_rad + theta_2_rad)
+        )
 
-        y_end = self.armconfig.SIZE_HUMERUS * np.sin(theta_1_rad) + \
-                self.armconfig.SIZE_RADIUS * np.sin(theta_2_rad)
-        
+        # Get target position
         target_x, target_y = self.target_cartesian[min(self.eph.nb_step_done, MAX_EPISODE_STEPS - 1)]
         distance_to_target = np.linalg.norm([x_end - target_x, y_end - target_y])
 
+        # Update state
         self.state = np.array(
             [
                 self.theta_1_c,
                 self.theta_2_c
-                # self.omega_elbow,
-                # self.omega_shoulder
             ],
             dtype=np.float32,
         )
 
-        terminated = False
-        success = distance_to_target < self.target_radius
+        # Reward calculation
+        max_reach = self.armconfig.SIZE_HUMERUS + self.armconfig.SIZE_RADIUS
+        normalized_distance = distance_to_target / max_reach
 
-        distance_reward = np.exp(-0.05 * distance_to_target) * 3
-        
-        success_bonus = 100.0 if success else 0.0
+        # Distance reward: +5 when at target, 0 at max reach
+        distance_reward = (1 - normalized_distance) * 5
 
-        energy_penalty = -0.01 * np.sum(action)
+        # Penalty for being outside target radius
+        if distance_to_target > self.target_radius:
+            distance_reward -= 2  # Additional penalty
 
+        # Success bonus only when very close
+        success = distance_to_target < 5  # Smaller success threshold
+        success_bonus = 50.0 if success else 0.0
+
+        # Energy penalty
+        energy_penalty = -0.05 * np.sum(action)  # Increased penalty
+
+        # Total reward
         reward = distance_reward + success_bonus + energy_penalty
 
+        # Update episode history
         self.eph.current_reward = reward
         self.eph.cum_reward_episode += reward
         self.eph.past_action = action
 
+        # Render if needed
         if self.render_mode == "human":
             self.render()
 
+        # Return step results
+        terminated = False
         return np.array(self.state, dtype=np.float32), reward, terminated, False, {}
 
     def reset(
