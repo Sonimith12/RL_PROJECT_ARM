@@ -1,15 +1,21 @@
-Run one of these commands: 
-
+## **Installation**  
+```bash
+pip install -r requirements.txt
+```
 # Basic training with default parameters
+```bash
 python train_model.py
-
+```
 # With custom learning rate and render
+```bash
 python train_model.py --learning-rate 1e-4 --render
-
+```
 # With GPU acceleration
+```bash
 python train_model.py --use-gpu
-
+```
 # Full custom configuration
+```bash
 python train_model.py \
     --learning-rate 1e-4 \
     --buffer-size 2000000 \
@@ -20,3 +26,4 @@ python train_model.py \
     --experiment-name custom_run \
     --use-gpu \
     --render
+```
