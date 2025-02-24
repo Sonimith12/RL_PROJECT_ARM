@@ -50,7 +50,7 @@ def sample_point_on_circle(radius, only_upper_part=True):
     # Sample a random angle theta between 0 and 2*pi
     theta = np.random.uniform(0, 2 * np.pi)
 
-    print(theta)
+    # print(theta)
     
     # Calculate x and y coordinates
     x = radius * np.cos(theta)

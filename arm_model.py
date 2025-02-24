@@ -137,9 +137,10 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         terminated = False
 
-        target_angle = self.target_angle_deg[self.eph.nb_step_done]
+        target_angle = self.target_angle_deg[min(self.eph.nb_step_done, MAX_EPISODE_STEPS - 1)]
         angle_diff_shoulder = abs(self.theta_1_c - target_angle)
         angle_diff_elbow = abs(self.theta_2_c)  # Assuming elbow target is 0°
+        # self.eph.nb_step_done += 1
 
         distance_reward = -0.1 * (angle_diff_shoulder + angle_diff_elbow)
 
@@ -197,7 +198,6 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
                 self.target_cartesian.extend([target] * num_steps)
                 self.target_angle_deg.extend([target_angle] * num_steps)
             
-            # Ensure lists are exactly MAX_EPISODE_STEPS long
             self.target_cartesian = self.target_cartesian[:MAX_EPISODE_STEPS]
             self.target_angle_deg = self.target_angle_deg[:MAX_EPISODE_STEPS]
         else:
@@ -269,20 +269,20 @@ def main():
     # Initialize the environment
     env = ArmReachingEnv2DTheta(render_mode="human")
     # env = ArmReachingEnv2DTheta(render_mode=None)
-    check_env(env)
-    state, _ = env.reset()
-    model = SAC(
-        "MlpPolicy",
-        env,
-        verbose=1,
-        learning_rate=3e-4,
-        buffer_size=1_000_000,
-        ent_coef='auto',  # Let SAC tune entropy automatically
-        gamma=0.99,
-        tau=0.05,        # Soft update coefficient
-    )
+    # check_env(env)
+    # state, _ = env.reset()
+    # model = SAC(
+    #     "MlpPolicy",
+    #     env,
+    #     verbose=1,
+    #     learning_rate=3e-4,
+    #     buffer_size=1_000_000,
+    #     ent_coef='auto',  # Let SAC tune entropy automatically
+    #     gamma=0.99,
+    #     tau=0.05,        # Soft update coefficient
+    # )
 
-    model.learn(total_timesteps=1_000_000)
+    # model.learn(total_timesteps=1_000_000)
     # for step in range(MAX_EPISODE_STEPS):
     #     action = env.action_space.sample()
     #     state, reward, terminated, truncated, info = env.step(action)
