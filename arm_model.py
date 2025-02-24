@@ -13,7 +13,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.env_checker import check_env
 
 SEED = 19930515
-MAX_EPISODE_STEPS = 5000
+MAX_EPISODE_STEPS = 100000
 FIXED_TARGET = True
 
 Armconfig = namedtuple('Armconfig', ['SIZE_HUMERUS', 'WIDTH_HUMERUS', 'SIZE_RADIUS','WIDTH_RADIUS'])
@@ -124,6 +124,16 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.theta_1_c = np.minimum(np.maximum(self.theta_1_c, 0), 180)
         self.theta_2_c = np.minimum(np.maximum(self.theta_2_c, 0), 150)
 
+        theta_1_rad = np.radians(self.theta_1_c)
+        theta_2_rad = np.radians(self.theta_2_c)
+        x_end = self.armconfig.SIZE_HUMERUS * np.cos(theta_1_rad) + \
+            self.armconfig.SIZE_RADIUS * np.cos(theta_2_rad)
+
+        y_end = self.armconfig.SIZE_HUMERUS * np.sin(theta_1_rad) + \
+                self.armconfig.SIZE_RADIUS * np.sin(theta_2_rad)
+        
+        target_x, target_y = self.target_cartesian[min(self.eph.nb_step_done, MAX_EPISODE_STEPS - 1)]
+        distance_to_target = np.linalg.norm([x_end - target_x, y_end - target_y])
 
         self.state = np.array(
             [
@@ -136,21 +146,16 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         )
 
         terminated = False
+        success = distance_to_target < self.target_radius
 
-        target_angle = self.target_angle_deg[min(self.eph.nb_step_done, MAX_EPISODE_STEPS - 1)]
-        angle_diff_shoulder = abs(self.theta_1_c - target_angle)
-        angle_diff_elbow = abs(self.theta_2_c)  # Assuming elbow target is 0°
-        # self.eph.nb_step_done += 1
-
-        distance_reward = -0.1 * (angle_diff_shoulder + angle_diff_elbow)
+        distance_reward = np.exp(-0.05 * distance_to_target) * 3
+        
+        success_bonus = 100.0 if success else 0.0
 
         energy_penalty = -0.01 * np.sum(action)
 
-        success = (angle_diff_shoulder < 5) and (angle_diff_elbow < 5)
-        success_bonus = 100.0 if success else 0.0
+        reward = distance_reward + success_bonus + energy_penalty
 
-        reward = distance_reward + energy_penalty + success_bonus
-        
         self.eph.current_reward = reward
         self.eph.cum_reward_episode += reward
         self.eph.past_action = action
@@ -269,31 +274,31 @@ def main():
     # Initialize the environment
     env = ArmReachingEnv2DTheta(render_mode="human")
     # env = ArmReachingEnv2DTheta(render_mode=None)
-    # check_env(env)
-    # state, _ = env.reset()
-    # model = SAC(
-    #     "MlpPolicy",
-    #     env,
-    #     verbose=1,
-    #     learning_rate=3e-4,
-    #     buffer_size=1_000_000,
-    #     ent_coef='auto',  # Let SAC tune entropy automatically
-    #     gamma=0.99,
-    #     tau=0.05,        # Soft update coefficient
-    # )
+    check_env(env)
+    state, _ = env.reset()
+    model = SAC(
+        "MlpPolicy",
+        env,
+        verbose=1,
+        learning_rate=3e-4,
+        buffer_size=1_000_000,
+        ent_coef='auto',  # Let SAC tune entropy automatically
+        gamma=0.99,
+        tau=0.05,        # Soft update coefficient
+    )
 
-    # model.learn(total_timesteps=1_000_000)
-    # for step in range(MAX_EPISODE_STEPS):
-    #     action = env.action_space.sample()
-    #     state, reward, terminated, truncated, info = env.step(action)
-    #     print(f"Step: {step}, State: {state}, Reward: {reward}")
+    model.learn(total_timesteps=1_000_000)
+    state, _ = env.reset()
 
-    #     if terminated or truncated:
-    #         print("Episode finished!")
-    #         break
+    for step in range(MAX_EPISODE_STEPS):
+        action, _ = model.predict(state, deterministic=True)
+        state, reward, terminated, truncated, info = env.step(action)
+        print(f"Step: {step}, State: {state}, Reward: {reward}")
 
-    # env.close()
+        if terminated or truncated:
+            print("Episode finished!")
+            break
 
-
+    env.close()
 if __name__ == "__main__":
     main()
