@@ -1,0 +1,7 @@
+# Core dependencies
+gymnasium==0.29.1
+numpy==1.26.4
+scipy==1.11.4
+matplotlib==3.8.2
+pygame==2.5.2
+stable-baselines3==2.1.0
