@@ -4,10 +4,64 @@ import torch
 import logging
 from stable_baselines3 import SAC
 from arm_model import ArmReachingEnv2DTheta
+import numpy as np
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+import numpy as np
+from stable_baselines3.common.callbacks import BaseCallback
+import logging
+
+class TrainingLoggerCallback(BaseCallback):
+    """Custom callback for logging training progress"""
+    
+    def __init__(self, check_freq: int = 1000, verbose: int = 0):
+        super().__init__(verbose)
+        self.check_freq = check_freq
+        self.logger = logging.getLogger(__name__)
+
+    def _on_step(self) -> bool:
+        if self.n_calls % self.check_freq == 0:
+            # Access training metrics
+            training_info = {
+                "timesteps": self.model.num_timesteps,
+                "mean_reward": np.mean(self.model.ep_info_buffer),
+                "max_reward": np.max(self.model.ep_info_buffer),
+                "episode_length": np.mean(self.model.ep_length_buffer),
+                "exploration_rate": self.model.exploration_rate
+            }
+            
+            # Access environment-specific metrics
+            if hasattr(self.model.env, 'envs'):
+                env = self.model.env.envs[0]
+                if hasattr(env, 'eph'):
+                    training_info.update({
+                        "current_distance": env.eph.current_reward,
+                        "avg_muscle_activation": np.mean(env.muscle_activations)
+                    })
+
+            # Format and log the training information
+            log_message = " | ".join(
+                [f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}"
+                 for k, v in training_info.items()]
+            )
+            self.logger.info(f"Training Progress: {log_message}")
+
+            # Log gradient norms
+            gradient_norms = {}
+            for name, param in self.model.policy.named_parameters():
+                if param.grad is not None:
+                    gradient_norms[f"grad_{name}"] = param.grad.norm().item()
+            
+            if gradient_norms:  # Only log if gradients are available
+                grad_message = " | ".join(
+                    [f"{k}: {v:.6f}" for k, v in gradient_norms.items()]
+                )
+                self.logger.info(f"Gradient Norms: {grad_message}")
+            
+        return True
+    
 def train_model(args):
     """Trains the SAC model and evaluates it after training."""
     
@@ -40,12 +94,12 @@ def train_model(args):
     model.learn(
         total_timesteps=args.total_timesteps,
         tb_log_name=args.experiment_name,
-        log_interval=4
+        log_interval=4,
+        callback=TrainingLoggerCallback(check_freq=1000)
     )
 
     logger.info("Training completed.")
 
-    # ✅ Save the trained model
     if args.save_path:
         os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
         model.save(args.save_path)
@@ -79,7 +133,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=256, help="Mini-batch size for training.")
     parser.add_argument("--ent-coef", type=str, default="auto", help="Entropy regularization coefficient.")
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor.")
-    parser.add_argument("--tau", type=float, default=0.005, help="Soft update coefficient for target networks.")
+    parser.add_argument("--tau", type=float, default=0.05, help="Soft update coefficient for target networks.")
     parser.add_argument("--total-timesteps", type=int, default=1_000_000, help="Total number of timesteps to train.")
     
     parser.add_argument("--eval-steps", type=int, default=500, help="Number of steps for evaluation.")

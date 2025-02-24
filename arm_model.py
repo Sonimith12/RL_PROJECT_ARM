@@ -106,25 +106,20 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         tau_shoulder = (shoulder_flexor - shoulder_extensor) * self.F_max * self.r_shoulder
         tau_elbow = (elbow_flexor - elbow_extensor) * self.F_max * self.r_elbow
 
-        # Calculate angular accelerations with damping
         alpha_shoulder = (tau_shoulder - self.b * self.omega_shoulder) / self.I_shoulder
         alpha_elbow = (tau_elbow - self.b * self.omega_elbow) / self.I_elbow
 
-        # Update angular velocities (Euler integration)
         self.omega_shoulder += alpha_shoulder * self.dt
         self.omega_elbow += alpha_elbow * self.dt
 
-        # Update joint angles (convert radians to degrees)
         delta_theta_1 = math.degrees(self.omega_shoulder * self.dt)
         delta_theta_2 = math.degrees(self.omega_elbow * self.dt)
         self.theta_1_c += delta_theta_1
         self.theta_2_c += delta_theta_2
 
-        # Clamp angles to biomechanical limits
         self.theta_1_c = np.minimum(np.maximum(self.theta_1_c, 0), 180)
         self.theta_2_c = np.minimum(np.maximum(self.theta_2_c, 0), 150)
 
-        # Calculate end effector position
         theta_1_rad = np.radians(self.theta_1_c)
         theta_2_rad = np.radians(self.theta_2_c)
         x_end = (
