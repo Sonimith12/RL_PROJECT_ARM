@@ -1,1 +1,1 @@
-high_obs
+MAX_EPISODE_STEPS

@@ -136,7 +136,7 @@ if __name__ == "__main__":
     parser.add_argument("--tau", type=float, default=0.05, help="Soft update coefficient for target networks.")
     parser.add_argument("--total-timesteps", type=int, default=1_000_000, help="Total number of timesteps to train.")
     
-    parser.add_argument("--eval-steps", type=int, default=500, help="Number of steps for evaluation.")
+    parser.add_argument("--eval-steps", type=int, default=2500, help="Number of steps for evaluation.")
     
     parser.add_argument("--use-gpu", action="store_true", help="Use GPU if available.")
     

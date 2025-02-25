@@ -13,7 +13,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.env_checker import check_env
 
 SEED = 19930515
-MAX_EPISODE_STEPS = 100000
+MAX_EPISODE_STEPS = 2500
 FIXED_TARGET = True
 
 Armconfig = namedtuple('Armconfig', ['SIZE_HUMERUS', 'WIDTH_HUMERUS', 'SIZE_RADIUS','WIDTH_RADIUS'])
@@ -138,8 +138,9 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         # Get target position
         # target_x, target_y = self.target_cartesian(self.eph.nb_step_done, MAX_EPISODE_STEPS - 1)
+        self.eph.nb_step_done += 1 
         target_x, target_y = self.target_cartesian[self.eph.nb_step_done]
-
+        
         # Update state
         self.state = np.array(
             [
@@ -155,11 +156,12 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         distance = np.linalg.norm([x_end-target_x, y_end-target_y])
 
-        success = 100 if distance < 3 else 0
+        success = 100 if distance < 5 else 0
 
         energy_penalty = 0.001 * np.sum(action)
 
-        reward = -distance + success - energy_penalty
+        # reward = -distance + success - energy_penalty
+        reward = -distance+success
 
         # Update episode history
         self.eph.current_reward = reward
@@ -305,7 +307,7 @@ def main():
         verbose=1,
         learning_rate=3e-4,
         buffer_size=200_000,
-        ent_coef='auto',  # Let SAC tune entropy automatically
+        ent_coef=0.1,  # Let SAC tune entropy automatically
         gamma=0.99,
         tau=0.005,        # Soft update coefficient
     )
