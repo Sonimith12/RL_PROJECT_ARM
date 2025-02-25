@@ -93,8 +93,8 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
     def step(self, action):
         assert self.action_space.contains(action), f"{action!r} ({type(action)}) invalid"
         assert self.state is not None, "Call reset before using step method."
-
-        self.eph.nb_step_done += 1
+        terminated = (self.eph.nb_step_done >= MAX_EPISODE_STEPS-1)
+        truncated = False
         self.eph.past_theta_1_values.append(self.theta_1_c)
         self.eph.past_theta_2_values.append(self.theta_2_c)
 
@@ -138,7 +138,7 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         # Get target position
         # target_x, target_y = self.target_cartesian(self.eph.nb_step_done, MAX_EPISODE_STEPS - 1)
-        self.eph.nb_step_done += 1 
+        # self.eph.nb_step_done += 1 
         target_x, target_y = self.target_cartesian[self.eph.nb_step_done]
         
         # Update state
@@ -154,14 +154,30 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
             dtype=np.float32,
         )
 
-        distance = np.linalg.norm([x_end-target_x, y_end-target_y])
+        distance = np.linalg.norm([x_end - target_x, y_end - target_y])
 
-        success = 100 if distance < 5 else 0
+        # Define maximum possible distance
+        max_distance = np.sqrt((self.armconfig.SIZE_HUMERUS + self.armconfig.SIZE_RADIUS) ** 2)
 
-        energy_penalty = 0.001 * np.sum(action)
+        # Normalize distance
+        normalized_distance = distance / max_distance
 
-        # reward = -distance + success - energy_penalty
-        reward = -distance+success
+        # Define success bonus
+        success = 10 if distance < 5 else 0
+
+        # Define energy penalty
+        # energy_penalty = 0.0001 * np.sum(action)
+
+        # Combine into reward
+        reward = -normalized_distance + success
+        # distance = np.linalg.norm([x_end-target_x, y_end-target_y])
+
+        # success = 100 if distance < 5 else 0
+
+        # energy_penalty = 0.001 * np.sum(action)
+
+        # # reward = -distance + success - energy_penalty
+        # reward = -distance+success
 
         # Update episode history
         self.eph.current_reward = reward
@@ -173,8 +189,10 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
             self.render()
 
         # Return step results
-        terminated = False
-        return np.array(self.state, dtype=np.float32), reward, terminated, False, {}
+        
+        self.eph.nb_step_done += 1
+        info = {"terminated": terminated, "truncated": truncated}
+        return np.array(self.state, dtype=np.float32), reward, terminated, truncated, info
 
     def reset(
         self,
@@ -213,7 +231,7 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
                 num_steps = end - start
                 self.target_cartesian.extend([target] * num_steps)
                 self.target_angle_deg.extend([target_angle] * num_steps)
-            
+
             self.target_cartesian = self.target_cartesian[:MAX_EPISODE_STEPS]
             self.target_angle_deg = self.target_angle_deg[:MAX_EPISODE_STEPS]
         else:
@@ -246,7 +264,7 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
                                   self.target_radius, 
                                   self.target_angle_deg, 
                                   self.target_cartesian)
-
+        self.eph.nb_step_done = 0
         theta_1_rad = np.radians(self.theta_1_c)
         theta_2_rad = np.radians(self.theta_2_c)
         x_end = (
@@ -306,8 +324,8 @@ def main():
         env,
         verbose=1,
         learning_rate=3e-4,
-        buffer_size=200_000,
-        ent_coef=0.1,  # Let SAC tune entropy automatically
+        buffer_size=50000,
+        ent_coef='auto',  # Let SAC tune entropy automatically
         gamma=0.99,
         tau=0.005,        # Soft update coefficient
     )
@@ -315,14 +333,17 @@ def main():
     model.learn(total_timesteps=1_000_000)
     state, _ = env.reset()
 
-    for step in range(MAX_EPISODE_STEPS):
-        action, _ = model.action_space.sample()
-        state, reward, terminated, truncated, info = env.step(action)
-        print(f"Step: {step}, State: {state}, Reward: {reward}")
+    num_episodes = 10  # Set the number of episodes
+    for episode in range(num_episodes):
+        state, _ = env.reset()
+        for step in range(MAX_EPISODE_STEPS):
+            action = env.action_space.sample()  # Take action
+            state, reward, terminated, truncated, info = env.step(action)
+            print(f"Episode {episode + 1}, Step {step + 1}, Reward: {reward}")
 
-        if terminated or truncated:
-            print("Episode finished!")
-            break
+            if terminated or truncated:
+                print(f"Episode {episode + 1} finished after {step + 1} steps!")
+                break  # End episode if needed
 
     env.close()
 if __name__ == "__main__":
