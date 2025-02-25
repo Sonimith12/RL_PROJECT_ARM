@@ -27,3 +27,7 @@ python train_model.py \
     --use-gpu \
     --render
 ```
+### Loading trained model 
+```bash
+python load_model.py --model-path models/sac_arm.zip --eval-steps 1000
+```
