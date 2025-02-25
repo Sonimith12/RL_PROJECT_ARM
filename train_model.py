@@ -42,11 +42,11 @@ class TrainingLoggerCallback(BaseCallback):
                     })
 
             # Format and log the training information
-            log_message = " \n ".join(
+            log_message = " | ".join(
                 [f"{k}: {v:.4f}" if isinstance(v, (float, int)) else f"{k}: {v}"
                  for k, v in training_info.items()]
             )
-            self.logger.info(f"========= Step Progress: {log_message} ==========")
+            self.logger.info(f"*** Step Progress: {log_message} ***")
 
             # Log gradient norms
             # gradient_norms = {}
