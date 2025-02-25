@@ -14,7 +14,7 @@ from stable_baselines3.common.env_checker import check_env
 
 SEED = 19930515
 MAX_EPISODE_STEPS = 100000
-FIXED_TARGET = False
+FIXED_TARGET = True
 
 Armconfig = namedtuple('Armconfig', ['SIZE_HUMERUS', 'WIDTH_HUMERUS', 'SIZE_RADIUS','WIDTH_RADIUS'])
 
@@ -53,6 +53,10 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         high_obs = np.array(
             [
                 np.inf,  
+                np.inf,
+                np.inf,
+                np.inf,
+                np.inf,
                 np.inf
             ],
             dtype=np.float32,
@@ -120,6 +124,7 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.theta_1_c = np.minimum(np.maximum(self.theta_1_c, 0), 180)
         self.theta_2_c = np.minimum(np.maximum(self.theta_2_c, 0), 150)
 
+
         theta_1_rad = np.radians(self.theta_1_c)
         theta_2_rad = np.radians(self.theta_2_c)
         x_end = (
@@ -132,38 +137,29 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         )
 
         # Get target position
-        target_x, target_y = self.target_cartesian[min(self.eph.nb_step_done, MAX_EPISODE_STEPS - 1)]
-        distance_to_target = np.linalg.norm([x_end - target_x, y_end - target_y])
+        # target_x, target_y = self.target_cartesian(self.eph.nb_step_done, MAX_EPISODE_STEPS - 1)
+        target_x, target_y = self.target_cartesian[self.eph.nb_step_done]
 
         # Update state
         self.state = np.array(
             [
                 self.theta_1_c,
-                self.theta_2_c
+                self.theta_2_c,
+                self.omega_shoulder,
+                self.omega_elbow,
+                x_end - target_x, 
+                y_end - target_y
             ],
             dtype=np.float32,
         )
 
-        # Reward calculation
-        max_reach = self.armconfig.SIZE_HUMERUS + self.armconfig.SIZE_RADIUS
-        normalized_distance = distance_to_target / max_reach
+        distance = np.linalg.norm([x_end-target_x, y_end-target_y])
 
-        # Distance reward: +5 when at target, 0 at max reach
-        distance_reward = (1 - normalized_distance) * 5
+        success = 100 if distance < 3 else 0
 
-        # Penalty for being outside target radius
-        if distance_to_target > self.target_radius:
-            distance_reward -= 2  # Additional penalty
+        energy_penalty = 0.001 * np.sum(action)
 
-        # Success bonus only when very close
-        success = distance_to_target < 5  # Smaller success threshold
-        success_bonus = 50.0 if success else 0.0
-
-        # Energy penalty
-        energy_penalty = -0.05 * np.sum(action)  # Increased penalty
-
-        # Total reward
-        reward = distance_reward + success_bonus + energy_penalty
+        reward = -distance + success - energy_penalty
 
         # Update episode history
         self.eph.current_reward = reward
@@ -249,12 +245,29 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
                                   self.target_angle_deg, 
                                   self.target_cartesian)
 
+        theta_1_rad = np.radians(self.theta_1_c)
+        theta_2_rad = np.radians(self.theta_2_c)
+        x_end = (
+            self.armconfig.SIZE_HUMERUS * np.cos(theta_1_rad) +
+            self.armconfig.SIZE_RADIUS * np.cos(theta_1_rad + theta_2_rad)
+        )
+        y_end = (
+            self.armconfig.SIZE_HUMERUS * np.sin(theta_1_rad) +
+            self.armconfig.SIZE_RADIUS * np.sin(theta_1_rad + theta_2_rad)
+        )
+
+        # Get initial target position
+        target_x, target_y = self.target_cartesian[0]
+
+        # Define the initial state
         self.state = np.array(
             [
-                self.theta_1_c,
-                self.theta_2_c
-                # self.omega_elbow,
-                # self.omega_shoulder
+                self.theta_1_c,          # Shoulder angle
+                self.theta_2_c,          # Elbow angle
+                self.omega_shoulder,     # Shoulder angular velocity
+                self.omega_elbow,        # Elbow angular velocity
+                x_end - target_x,        # X error (end effector - target)
+                y_end - target_y         # Y error (end effector - target)
             ],
             dtype=np.float32,
         )
@@ -283,31 +296,31 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 def main():
     # Initialize the environment
     env = ArmReachingEnv2DTheta(render_mode="human")
-    # # env = ArmReachingEnv2DTheta(render_mode=None)
+    # env = ArmReachingEnv2DTheta(render_mode=None)
     # check_env(env)
-    # state, _ = env.reset()
-    # model = SAC(
-    #     "MlpPolicy",
-    #     env,
-    #     verbose=1,
-    #     learning_rate=3e-4,
-    #     buffer_size=1_000_000,
-    #     ent_coef='auto',  # Let SAC tune entropy automatically
-    #     gamma=0.99,
-    #     tau=0.05,        # Soft update coefficient
-    # )
+    state, _ = env.reset()
+    model = SAC(
+        "MlpPolicy",
+        env,
+        verbose=1,
+        learning_rate=3e-4,
+        buffer_size=200_000,
+        ent_coef='auto',  # Let SAC tune entropy automatically
+        gamma=0.99,
+        tau=0.005,        # Soft update coefficient
+    )
 
-    # model.learn(total_timesteps=1_000_000)
-    # state, _ = env.reset()
+    model.learn(total_timesteps=1_000_000)
+    state, _ = env.reset()
 
-    # for step in range(MAX_EPISODE_STEPS):
-    #     action, _ = model.action_space.sample()
-    #     state, reward, terminated, truncated, info = env.step(action)
-    #     print(f"Step: {step}, State: {state}, Reward: {reward}")
+    for step in range(MAX_EPISODE_STEPS):
+        action, _ = model.action_space.sample()
+        state, reward, terminated, truncated, info = env.step(action)
+        print(f"Step: {step}, State: {state}, Reward: {reward}")
 
-    #     if terminated or truncated:
-    #         print("Episode finished!")
-    #         break
+        if terminated or truncated:
+            print("Episode finished!")
+            break
 
     env.close()
 if __name__ == "__main__":
