@@ -176,7 +176,7 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         # success = 100 if distance < 5 else 0
 
         # energy_penalty = 0.001 * np.sum(action)
-        success = 100 if distance < 5 else 0
+        success = 100 if distance < 6 else 0
         proximity_bonus = (1 - normalized_distance) * 10  # Scale bonus
         energy_penalty = 0.001 * np.sum(action)
         reward = proximity_bonus + success - energy_penalty
@@ -220,7 +220,17 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
                 (1200, 1800, 0.25),       # Next 300 steps: quarter radius
                 (1800, MAX_EPISODE_STEPS, 0.125)  # Remaining steps: eighth radius
             ]
-            
+            # intervals = [
+            #     (0, 200, 1),            # First 100 steps: full radius
+            #     (200, 400, 0.9),        # Next 200 steps: half radius
+            #     (400, 600, 0.8),       # Next 300 steps: quarter radius
+            #     (600, 800, 0.7),       # Next 300 steps: quarter radius
+            #     (800, 1000, 0.75),       # Next 300 steps: quarter radius
+            #     (1000, 1200, 0.6),
+            #     (1200, 1400, 0.65),
+            #     (1400, 1600, 0.5),
+            #     (1800, MAX_EPISODE_STEPS, 0.125) 
+            # ]
             self.target_cartesian = []
             self.target_angle_deg = []
             

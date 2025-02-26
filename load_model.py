@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 def evaluate_loaded_model(model_path, eval_steps=500, render=True):
     """Load and evaluate a trained model with rendering."""
     try:
+
+        cumm_reward = 0 
         # Create environment with rendering
         env = ArmReachingEnv2DTheta(render_mode="human" if render else None)
         
@@ -24,7 +26,7 @@ def evaluate_loaded_model(model_path, eval_steps=500, render=True):
         for step in range(eval_steps):
             action, _ = model.predict(state, deterministic=True)
             state, reward, terminated, truncated, _ = env.step(action)
-            
+            cumm_reward += reward
             logger.info(f"Step: {step}, Reward: {reward:.4f}")
             
             if terminated or truncated:
@@ -33,7 +35,7 @@ def evaluate_loaded_model(model_path, eval_steps=500, render=True):
 
         env.close()
         logger.info("Evaluation completed.")
-
+        logger.info(f"Total Steps:{step+1}, Total rewawrd: {cumm_reward})") 
     except KeyboardInterrupt:
         logger.info("Evaluation interrupted by user.")
     finally:
@@ -44,7 +46,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate a trained robotic arm model.")
     parser.add_argument("--model-path", type=str, required=True,
                         help="Path to the trained model zip file")
-    parser.add_argument("--eval-steps", type=int, default=500,
+    parser.add_argument("--eval-steps", type=int, default=2500,
                         help="Number of steps for evaluation")
     parser.add_argument("--no-render", action="store_false", dest="render",
                         help="Disable rendering during evaluation")

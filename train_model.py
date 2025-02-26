@@ -47,9 +47,9 @@ class TrainingLoggerCallback(BaseCallback):
                     "timesteps": self.model.num_timesteps,
                     "cumulative_reward": self.current_episode_reward,
                     "episode_length": self.current_episode_length,
-                    "avg_muscle_activation": np.mean(env.muscle_activations),
+                    # "avg_muscle_activation": np.mean(env.muscle_activations),
                     "terminated": terminated,
-                    "truncated": truncated,
+                    # "truncated": truncated,
                 }
                 log_message = " | ".join(
                     [f"{k}: {v:.4f}" if isinstance(v, (float, int)) else f"{k}: {v}"
