@@ -14,7 +14,7 @@ from stable_baselines3.common.env_checker import check_env
 
 SEED = 19930515
 MAX_EPISODE_STEPS = 2500
-FIXED_TARGET = False
+FIXED_TARGET = True
 
 Armconfig = namedtuple('Armconfig', ['SIZE_HUMERUS', 'WIDTH_HUMERUS', 'SIZE_RADIUS','WIDTH_RADIUS'])
 
