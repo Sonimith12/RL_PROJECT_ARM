@@ -155,27 +155,31 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         )
 
         distance = np.linalg.norm([x_end - target_x, y_end - target_y])
-
+        # Example improved reward function
+        
         # Define maximum possible distance
-        # max_distance = np.sqrt((self.armconfig.SIZE_HUMERUS + self.armconfig.SIZE_RADIUS) ** 2)
+        max_distance = np.sqrt((self.armconfig.SIZE_HUMERUS + self.armconfig.SIZE_RADIUS) ** 2)
 
         # Normalize distance
-        # normalized_distance = distance / max_distance
+        normalized_distance = distance / max_distance
 
         # Define success bonus
-        success = 100 if distance < 5 else 0
+        # success = 100 if distance < 5 else 0
 
         # Define energy penalty
         # energy_penalty = 0.0001 * np.sum(action)
 
         # Combine into reward
-        reward = -distance + success
+        # reward = -distance + success
         # distance = np.linalg.norm([x_end-target_x, y_end-target_y])
 
         # success = 100 if distance < 5 else 0
 
         # energy_penalty = 0.001 * np.sum(action)
-
+        success = 100 if distance < 5 else 0
+        proximity_bonus = (1 - normalized_distance) * 10  # Scale bonus
+        energy_penalty = 0.001 * np.sum(action)
+        reward = proximity_bonus + success - energy_penalty
         # # reward = -distance + success - energy_penalty
         # reward = -distance+success
 
