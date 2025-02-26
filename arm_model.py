@@ -14,7 +14,7 @@ from stable_baselines3.common.env_checker import check_env
 
 SEED = 19930515
 MAX_EPISODE_STEPS = 2500
-FIXED_TARGET = True
+FIXED_TARGET = False
 
 Armconfig = namedtuple('Armconfig', ['SIZE_HUMERUS', 'WIDTH_HUMERUS', 'SIZE_RADIUS','WIDTH_RADIUS'])
 
@@ -157,19 +157,19 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         distance = np.linalg.norm([x_end - target_x, y_end - target_y])
 
         # Define maximum possible distance
-        max_distance = np.sqrt((self.armconfig.SIZE_HUMERUS + self.armconfig.SIZE_RADIUS) ** 2)
+        # max_distance = np.sqrt((self.armconfig.SIZE_HUMERUS + self.armconfig.SIZE_RADIUS) ** 2)
 
         # Normalize distance
-        normalized_distance = distance / max_distance
+        # normalized_distance = distance / max_distance
 
         # Define success bonus
-        success = 10 if distance < 5 else 0
+        success = 100 if distance < 5 else 0
 
         # Define energy penalty
         # energy_penalty = 0.0001 * np.sum(action)
 
         # Combine into reward
-        reward = -normalized_distance + success
+        reward = -distance + success
         # distance = np.linalg.norm([x_end-target_x, y_end-target_y])
 
         # success = 100 if distance < 5 else 0
@@ -333,7 +333,7 @@ def main():
     model.learn(total_timesteps=1_000_000)
     state, _ = env.reset()
 
-    num_episodes = 10  # Set the number of episodes
+    num_episodes = 25  # Set the number of episodes
     for episode in range(num_episodes):
         state, _ = env.reset()
         for step in range(MAX_EPISODE_STEPS):
