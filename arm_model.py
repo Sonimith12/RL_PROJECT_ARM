@@ -14,7 +14,7 @@ from stable_baselines3.common.env_checker import check_env
 
 SEED = 19930515
 MAX_EPISODE_STEPS = 2500
-FIXED_TARGET = False
+FIXED_TARGET = True
 
 Armconfig = namedtuple('Armconfig', ['SIZE_HUMERUS', 'WIDTH_HUMERUS', 'SIZE_RADIUS','WIDTH_RADIUS'])
 
@@ -177,7 +177,7 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         # success = 100 if distance < 5 else 0
 
         # energy_penalty = 0.001 * np.sum(action)
-        success = 100 if distance < 6 else 0
+        success = 100 if distance < 8 else 0
         # proximity_bonus = (1 - normalized_distance) * 10  # Scale bonus
         proximity_bonus = np.exp(-5 * normalized_distance) * 10  # Exponential proximity bonus
 
