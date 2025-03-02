@@ -14,7 +14,7 @@ from stable_baselines3.common.env_checker import check_env
 
 SEED = 19930515
 MAX_EPISODE_STEPS = 2500
-FIXED_TARGET = True
+FIXED_TARGET = False
 
 Armconfig = namedtuple('Armconfig', ['SIZE_HUMERUS', 'WIDTH_HUMERUS', 'SIZE_RADIUS','WIDTH_RADIUS'])
 
@@ -37,7 +37,7 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.I_elbow = 0.05         # Elbow moment of inertia 
         self.b = 0.1                # Viscous damping coefficient 
         self.dt = 0.05              # Time step 
-        
+        self.episode_count = 0
         high_action_range = np.array(
             [
                 1,  # shoulder_flexor
@@ -153,6 +153,7 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
             ],
             dtype=np.float32,
         )
+        self.apply_energy_penalty = False
 
         distance = np.linalg.norm([x_end - target_x, y_end - target_y])
         # Example improved reward function
@@ -177,8 +178,13 @@ class ArmReachingEnv2DTheta(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         # energy_penalty = 0.001 * np.sum(action)
         success = 100 if distance < 6 else 0
-        proximity_bonus = (1 - normalized_distance) * 10  # Scale bonus
-        energy_penalty = 0.001 * np.sum(action)
+        # proximity_bonus = (1 - normalized_distance) * 10  # Scale bonus
+        proximity_bonus = np.exp(-5 * normalized_distance) * 10  # Exponential proximity bonus
+
+        # apply penalty only after 25 epochs
+        energy_penalty = 0.001 * np.sum(action) if self.apply_energy_penalty else 0
+        if self.episode_count == 25:  # After 25 episodes
+            self.model.env.envs[0].apply_energy_penalty = True
         reward = proximity_bonus + success - energy_penalty
         # # reward = -distance + success - energy_penalty
         # reward = -distance+success

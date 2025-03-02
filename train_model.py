@@ -23,7 +23,7 @@ class TrainingLoggerCallback(BaseCallback):
         self.current_episode_length = 0  # Track length of the current episode
 
     def _on_step(self) -> bool:
-        # Check if the episode has ended using the "dones" array
+    # Check if the episode has ended using the "dones" array
         done = self.locals["dones"][0]  # For vectorized environments
 
         # Accumulate reward and length for the current episode
@@ -53,7 +53,7 @@ class TrainingLoggerCallback(BaseCallback):
                 }
                 log_message = " | ".join(
                     [f"{k}: {v:.4f}" if isinstance(v, (float, int)) else f"{k}: {v}"
-                     for k, v in training_info.items()]
+                    for k, v in training_info.items()]
                 )
                 self.logger.info(f"*** Episode Progress: {log_message} ***")
 
@@ -61,6 +61,12 @@ class TrainingLoggerCallback(BaseCallback):
             self.current_episode_reward = 0
             self.current_episode_length = 0
             self.episode_count += 1
+
+            # Encourage exploration in the first 25 episodes
+            if self.episode_count == 25:
+                # Reduce entropy coefficient after 25 episodes to focus on exploitation
+                self.model.ent_coef = 0.1  # Lower value for exploitation
+                self.logger.info("*** Transitioning to exploitation: Entropy coefficient reduced to 0.1 ***")
 
         return True
 
@@ -88,7 +94,7 @@ def main(args):
             verbose=1,
             learning_rate=args.learning_rate,
             buffer_size=args.buffer_size,
-            ent_coef=args.ent_coef,  # Let SAC tune entropy automatically
+            ent_coef=0.8,  # Higher initial entropy coefficient for exploration
             gamma=args.gamma,
             tau=args.tau,
             device=device,
