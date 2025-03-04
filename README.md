@@ -10,7 +10,7 @@ python train_model.py
 ```bash
 !python train_model.py --use-gpu --episode-length 2500 --total-timesteps 250000
 ```
-### Loading trained model 
+### Loading trained model (Consider modifying the name of the model according to the name you save it default: models/sac_arm.zip)
 ```bash
 python load_model.py --model-path models/sac_arm_latest.zip --eval-steps 2500
 ```
