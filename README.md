@@ -6,28 +6,11 @@ pip install -r requirements.txt
 ```bash
 python train_model.py
 ```
-### With custom learning rate and render
+### With custom episode-length and total timesteps 
 ```bash
-python train_model.py --learning-rate 1e-4 --render
-```
-### With GPU acceleration
-```bash
-python train_model.py --use-gpu
-```
-### Full custom configuration
-```bash
-python train_model.py \
-    --learning-rate 1e-4 \
-    --buffer-size 2000000 \
-    --batch-size 512 \
-    --total-timesteps 2000000 \
-    --save-path models/custom_model \
-    --log-dir logs/custom_experiment \
-    --experiment-name custom_run \
-    --use-gpu \
-    --render
+!python train_model.py --use-gpu --episode-length 2500 --total-timesteps 250000
 ```
 ### Loading trained model 
 ```bash
-python load_model.py --model-path models/sac_arm.zip --eval-steps 1000
+python load_model.py --model-path models/sac_arm_latest.zip --eval-steps 2500
 ```
