@@ -14,3 +14,4 @@ python train_model.py
 ```bash
 python load_model.py --model-path models/sac_arm_latest.zip --eval-steps 2500
 ```
+### For more information on other arguments please check train_model.py
